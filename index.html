@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오늘 먹을 저녁 메뉴 추천</title>
+    <style>
+        /* 기본 스타일 초기화 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 40px 30px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #777;
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+
+        /* 메뉴 표시 카드 */
+        .card {
+            background-color: #fff9f5;
+            border: 2px dashed #ff8a65;
+            border-radius: 20px;
+            padding: 40px 20px;
+            margin-bottom: 30px;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .emoji {
+            font-size: 5rem;
+            line-height: 1.2;
+            margin-bottom: 10px;
+            user-select: none;
+        }
+
+        .food-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        /* 추천 버튼 */
+        .btn {
+            width: 100%;
+            background: linear-gradient(45deg, #ff6b6b, #ff8e53);
+            color: #ffffff;
+            border: none;
+            padding: 16px;
+            font-size: 1.15rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 8px 15px rgba(255, 107, 107, 0.3);
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 5px 10px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn:disabled {
+            background: #cccccc;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 결정 시 통통 튀는 애니메이션 */
+        .bounce {
+            animation: bounceAnim 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes bounceAnim {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>오늘 먹을 저녁 메뉴 추천</h1>
+        <p class="subtitle">오늘 저녁 뭐 먹을지 고민될 땐?</p>
+
+        <div class="card">
+            <div class="emoji" id="emoji">❓</div>
+            <div class="food-name" id="foodName">버튼을 눌러주세요!</div>
+        </div>
+
+        <button class="btn" id="recommendBtn" onclick="recommendMenu()">[저녁메뉴 추천]</button>
+    </div>
+
+    <script>
+        // 메뉴 데이터 (이모지 & 음식이름)
+        const menuList = [
+            { name: "삼겹살", emoji: "🥩" },
+            { name: "치킨", emoji: "🍗" },
+            { name: "피자", emoji: "🍕" },
+            { name: "햄버거", emoji: "🍔" },
+            { name: "초밥", emoji: "🍣" },
+            { name: "라면", emoji: "🍜" },
+            { name: "김치찌개", emoji: "🍲" },
+            { name: "된장찌개", emoji: "🥘" },
+            { name: "파스타", emoji: "🍝" },
+            { name: "카레", emoji: "🍛" },
+            { name: "떡볶이", emoji: "🍢" },
+            { name: "족발/보쌈", emoji: "🍖" },
+            { name: "제육볶음", emoji: "🍱" },
+            { name: "타코", emoji: "🌮" },
+            { name: "샐러드", emoji: "🥗" },
+            { name: "짜장면/짬뽕", emoji: "🥢" },
+            { name: "스테이크", emoji: "🥩" },
+            { name: "돈가스", emoji: "🍱" },
+            { name: "마라탕", emoji: "🍲" },
+            { name: "국밥", emoji: "🥣" }
+        ];
+
+        let isRunning = false;
+
+        function recommendMenu() {
+            if (isRunning) return;
+            isRunning = true;
+
+            const emojiEl = document.getElementById("emoji");
+            const foodNameEl = document.getElementById("foodName");
+            const btn = document.getElementById("recommendBtn");
+
+            btn.disabled = true;
+
+            let count = 0;
+            const maxCount = 15; // 셔플 횟수
+
+            // 랜덤으로 빠르게 돌어가는 롤렛 효과
+            const interval = setInterval(() => {
+                const randomIndex = Math.floor(Math.random() * menuList.length);
+                const randomItem = menuList[randomIndex];
+
+                emojiEl.textContent = randomItem.emoji;
+                foodNameEl.textContent = randomItem.name;
+
+                count++;
+                if (count >= maxCount) {
+                    clearInterval(interval);
+
+                    // 최종 메뉴 결정
+                    const finalIndex = Math.floor(Math.random() * menuList.length);
+                    const finalItem = menuList[finalIndex];
+
+                    emojiEl.textContent = finalItem.emoji;
+                    foodNameEl.textContent = finalItem.name;
+
+                    // 결과 애니메이션 적용
+                    emojiEl.classList.remove("bounce");
+                    void emojiEl.offsetWidth; // 리플로우(Reflow) 강제 발생
+                    emojiEl.classList.add("bounce");
+
+                    btn.disabled = false;
+                    isRunning = false;
+                }
+            }, 80); // 0.08초 간격
+        }
+    </script>
+
+</body>
+</html>
