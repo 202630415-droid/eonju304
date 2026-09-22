@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>수면 완성도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EFEEF4;
+  --surface:#FFFFFF;
+  --line:#D6D4E2;
+  --ink:#1E1B3A;
+  --ink-soft:#615D82;
+  --ink-faint:#8E8AAB;
+  --sleep:#3B3A78;
+  --sleep-soft:#8280C0;
+  --band:#DBD9EE;
+  --band-buffer:#EAE9F4;
+  --caffeine:#C9862F;
+  --caffeine-soft:#F0D9B4;
+  --good:#2E7D64;
+  --bad:#B04A3E;
+  --focus:#3B3A78;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14132A; --surface:#1E1C38; --line:#332F55;
+    --ink:#E9E7F6; --ink-soft:#A9A4CB; --ink-faint:#746F98;
+    --sleep:#9B98E8; --sleep-soft:#514E93; --band:#2C2A50; --band-buffer:#242243;
+    --caffeine:#E0A24F; --caffeine-soft:#4A3A21;
+    --good:#6BC3A4; --bad:#E3897C; --focus:#9B98E8;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14132A; --surface:#1E1C38; --line:#332F55;
+  --ink:#E9E7F6; --ink-soft:#A9A4CB; --ink-faint:#746F98;
+  --sleep:#9B98E8; --sleep-soft:#514E93; --band:#2C2A50; --band-buffer:#242243;
+  --caffeine:#E0A24F; --caffeine-soft:#4A3A21;
+  --good:#6BC3A4; --bad:#E3897C; --focus:#9B98E8;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  font-weight:400;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+main{max-width:620px;margin:0 auto;padding:40px 20px 72px}
+
+h1{
+  font-size:26px;font-weight:600;letter-spacing:-.02em;margin:0 0 4px;
+}
+.lede{color:var(--ink-soft);font-size:14.5px;margin:0 0 32px;max-width:52ch}
+
+section{margin-bottom:34px}
+h2{font-size:15px;font-weight:600;margin:0 0 14px;letter-spacing:-.01em}
+.hint{font-size:12.5px;color:var(--ink-faint);margin:6px 0 0;line-height:1.5}
+
+/* ---- timeline ---- */
+.timeline{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:22px 18px 14px;
+}
+.track{
+  position:relative;height:56px;border-radius:8px;overflow:hidden;
+  background:var(--band-buffer);
+}
+.zone{position:absolute;top:0;bottom:0}
+.zone.buffer{background:var(--band)}
+.zone.core{background:var(--band);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--sleep) 22%,transparent)}
+.zone.core::after{
+  content:"";position:absolute;inset:0;
+  background:color-mix(in srgb,var(--sleep) 14%,transparent);
+}
+.zonelabel{
+  position:absolute;top:6px;font-size:11px;color:var(--ink-faint);
+  transform:translateX(-50%);white-space:nowrap;pointer-events:none;
+}
+.sleepbar{
+  position:absolute;top:22px;height:22px;border-radius:5px;
+  background:var(--sleep);
+  transition:left .22s ease,width .22s ease;
+}
+.dot{
+  position:absolute;top:4px;width:9px;height:9px;border-radius:50%;
+  background:var(--caffeine);transform:translateX(-50%);
+  box-shadow:0 0 0 2px var(--surface);
+}
+.ticks{position:relative;height:22px;margin-top:7px}
+.tick{
+  position:absolute;font-size:11.5px;color:var(--ink-faint);
+  transform:translateX(-50%);white-space:nowrap;
+}
+.tick.edge-l{transform:none;left:0!important}
+.tick.edge-r{transform:none;right:0;left:auto!important}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font-size:12px;color:var(--ink-soft)}
+.legend span{display:flex;align-items:center;gap:7px}
+.sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+/* ---- inputs ---- */
+.row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;margin-top:18px}
+label{display:block;font-size:12.5px;color:var(--ink-soft);margin-bottom:5px}
+input[type=time],input[type=number],select{
+  font-family:inherit;font-size:15px;color:var(--ink);
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:8px;padding:8px 10px;
+}
+input[type=number]{width:92px}
+.dur{font-size:14px;color:var(--ink-soft);padding-bottom:9px}
+
+/* ---- caffeine ---- */
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+.chip{
+  font-family:inherit;font-size:13px;color:var(--ink);
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:999px;padding:7px 13px;cursor:pointer;
+  transition:border-color .15s,background .15s;
+}
+.chip:hover{border-color:var(--caffeine);background:var(--caffeine-soft)}
+.chip.active{border-color:var(--caffeine);background:var(--caffeine-soft)}
+.chip small{color:var(--ink-faint);margin-left:5px;font-size:11.5px}
+.chip:hover small{color:var(--ink-soft)}
+
+.addrow{
+  display:none;align-items:flex-end;gap:12px;flex-wrap:wrap;
+  margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:10px;
+  background:var(--band-buffer);
+}
+.addrow.open{display:flex}
+.addrow .f{display:flex;flex-direction:column;gap:5px}
+.addrow input[type=number]{width:80px}
+
+.confirmband{
+  display:none;align-items:center;gap:8px;margin-top:10px;
+  font-size:13px;color:var(--good);
+}
+.confirmband.show{display:flex}
+
+ul.drinks{list-style:none;margin:16px 0 0;padding:0}
+ul.drinks li{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:9px 0;border-top:1px solid var(--line);font-size:14px;
+}
+ul.drinks li:last-child{border-bottom:1px solid var(--line)}
+.dname{flex:1 1 90px;min-width:0}
+.dmg{color:var(--ink-soft);font-size:13px;font-variant-numeric:tabular-nums}
+.dres{color:var(--caffeine);font-size:13px;font-variant-numeric:tabular-nums}
+.del{
+  background:none;border:none;color:var(--ink-faint);cursor:pointer;
+  font-size:17px;line-height:1;padding:4px 6px;border-radius:6px;font-family:inherit;
+}
+.del:hover{color:var(--bad)}
+.empty{font-size:13.5px;color:var(--ink-faint);margin:16px 0 0}
+
+/* ---- score ---- */
+.scorecard{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:24px 22px;
+}
+.scoreline{display:flex;align-items:baseline;gap:12px}
+.score{font-size:58px;font-weight:600;letter-spacing:-.035em;line-height:1;font-variant-numeric:tabular-nums}
+.scoreunit{font-size:17px;color:var(--ink-soft)}
+.verdict{margin-left:auto;font-size:14px;color:var(--ink-soft)}
+
+.bars{margin-top:20px}
+.bd{display:flex;align-items:center;gap:10px;font-size:13.5px;padding:5px 0}
+.bd .k{flex:0 0 92px;color:var(--ink-soft)}
+.bd .meter{flex:1;height:6px;border-radius:3px;background:var(--band-buffer);overflow:hidden;min-width:60px}
+.bd .fill{height:100%;border-radius:3px}
+.bd .v{flex:0 0 58px;text-align:right;font-variant-numeric:tabular-nums}
+.minus{color:var(--bad)}
+
+.tip{
+  margin-top:20px;padding-top:18px;border-top:1px solid var(--line);
+  font-size:14px;line-height:1.65;
+}
+.tip strong{font-weight:600}
+
+/* ---- log ---- */
+.btn{
+  font-family:inherit;font-size:14px;font-weight:500;
+  background:var(--sleep);color:var(--surface);
+  border:none;border-radius:8px;padding:10px 18px;cursor:pointer;
+}
+.btn:hover{filter:brightness(1.08)}
+.btn.ghost{background:none;color:var(--ink-soft);border:1px solid var(--line)}
+.logrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.saved{font-size:13px;color:var(--good)}
+.reg{margin-top:18px;font-size:14px;line-height:1.7}
+.reg .big{font-weight:600}
+.spark{display:flex;gap:4px;align-items:flex-end;height:38px;margin-top:10px}
+.spark div{flex:1;background:var(--sleep-soft);border-radius:2px;min-height:3px}
+
+.togglelink{
+  background:none;border:none;font-family:inherit;font-size:13px;
+  color:var(--sleep);cursor:pointer;padding:0;margin-top:12px;
+  text-decoration:underline;text-underline-offset:2px;
+}
+.logtable{display:none;margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.logtable.open{display:block}
+.logtable table{width:100%;border-collapse:collapse;font-size:13px}
+.logtable th,.logtable td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)}
+.logtable th{color:var(--ink-soft);font-weight:600;font-size:12px;background:var(--band-buffer)}
+.logtable td.num{text-align:right;font-variant-numeric:tabular-nums}
+.logtable tr:last-child td{border-bottom:none}
+.logtable .rowdel{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:14px;padding:2px 6px}
+.logtable .rowdel:hover{color:var(--bad)}
+.logempty{padding:14px;font-size:13px;color:var(--ink-faint)}
+
+footer{margin-top:40px;font-size:12px;color:var(--ink-faint);line-height:1.7}
+
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:480px){
+  .score{font-size:46px}
+  .verdict{margin-left:0;flex-basis:100%}
+  .bd .k{flex-basis:76px}
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>수면 완성도</h1>
+  <p class="lede">어젯밤 잠든 시각과 일어난 시각, 그리고 오늘 마신 카페인을 적으면 100점 만점으로 환산해 드립니다.</p>
+
+  <section>
+    <div class="timeline">
+      <div class="track" id="track">
+        <div class="zone buffer" id="zBuf1"></div>
+        <div class="zone core" id="zCore"></div>
+        <div class="zone buffer" id="zBuf2"></div>
+        <div class="zonelabel" id="zLabel">최적 수면 구간</div>
+        <div class="sleepbar" id="sleepbar"></div>
+      </div>
+      <div class="ticks" id="ticks"></div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--sleep)"></i>잠든 시간</span>
+        <span><i class="sw" style="background:var(--band)"></i>밤 10시 – 아침 7시 (100%)</span>
+        <span><i class="sw" style="background:var(--band-buffer)"></i>그 밖의 시간 (50–75%)</span>
+        <span><i class="sw" style="background:var(--caffeine);border-radius:50%"></i>카페인 섭취</span>
+      </div>
+      <div class="row">
+        <div>
+          <label for="bed">잠든 시각</label>
+          <input type="time" id="bed" value="23:30">
+        </div>
+        <div>
+          <label for="wake">일어난 시각</label>
+          <input type="time" id="wake" value="07:00">
+        </div>
+        <div class="dur" id="dur"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>오늘 마신 카페인</h2>
+    <div class="presets" id="presets"></div>
+
+    <div class="addrow" id="addrow">
+      <div class="f">
+        <label for="addName">음료</label>
+        <input type="text" id="addName" readonly>
+      </div>
+      <div class="f">
+        <label for="addMg">카페인(mg)</label>
+        <input type="number" id="addMg" min="0" step="1">
+      </div>
+      <div class="f">
+        <label for="addTime">마신 시각</label>
+        <input type="time" id="addTime">
+      </div>
+      <button class="btn" id="addConfirm" type="button">추가</button>
+      <button class="btn ghost" id="addCancel" type="button">취소</button>
+    </div>
+    <div class="confirmband" id="confirmband">✓ 추가했습니다</div>
+
+    <p class="hint">마신 시각이 중요합니다. 카페인 반감기는 약 5시간이라, 같은 한 잔도 아침에 마셨으면 잠들 무렵엔 거의 남지 않습니다.</p>
+    <ul class="drinks" id="drinks"></ul>
+    <p class="empty" id="drinksEmpty">아직 기록이 없습니다. 위에서 마신 음료를 눌러 추가하세요.</p>
+  </section>
+
+  <section>
+    <div class="scorecard">
+      <div class="scoreline">
+        <div class="score" id="score">—</div>
+        <div class="scoreunit">점</div>
+        <div class="verdict" id="verdict"></div>
+      </div>
+      <div class="bars" id="bars"></div>
+      <div class="tip" id="tip"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>수면 규칙성</h2>
+    <p class="hint" style="margin-top:0">피로에 가장 크게 영향을 주는 건 하루치 점수보다 매일 잠드는 시각이 얼마나 일정한가입니다. 며칠 기록을 쌓으면 흔들린 정도를 보여드립니다.</p>
+    <div class="logrow" style="margin-top:14px">
+      <button class="btn" id="save">오늘 기록 저장</button>
+      <button class="btn ghost" id="clear">전체 지우기</button>
+      <span class="saved" id="savedMsg"></span>
+    </div>
+    <div class="reg" id="reg"></div>
+    <button class="togglelink" id="toggleLog" type="button">저장된 기록 전체 보기</button>
+    <div class="logtable" id="logtable"></div>
+  </section>
+
+  <footer>
+    카페인 함량은 일반적인 시판 제품의 평균값이며 브랜드에 따라 차이가 큽니다.<br>
+    기록은 이 브라우저에만 저장되고 어디로도 전송되지 않습니다. 건강 문제는 의료 전문가와 상담하세요.
+  </footer>
+</main>
+
+<script>
+(function(){
+"use strict";
+
+/* ============ 설정값 ============ */
+var CORE_START = 22*60, CORE_END = 7*60;        // 100% 구간
+var BUF_BEFORE = 21*60, BUF_AFTER = 8*60;       // 75% 완충 구간
+var TARGET_H = 8;                               // 만점 기준 유효 수면시간
+var HALF_LIFE = 5;                              // 카페인 반감기(시간)
+var CAF_DIV = 10;                               // 잔류량 → 감점 나눗셈
+var CAF_CAP = 25;                               // 카페인 최대 감점
+var OVER_START = 9;                             // 과다수면 시작(시간)
+var OVER_RATE = 8, OVER_CAP = 20;               // 과다수면 감점
+var TL_START = 6*60, TL_LEN = 30*60;            // 타임라인 06:00부터 30시간
+
+var PRESETS = [
+  {n:"아메리카노", mg:125},
+  {n:"카페라떼",   mg:125},
+  {n:"콜드브루",   mg:200},
+  {n:"에너지드링크", mg:100},
+  {n:"믹스커피",   mg:50},
+  {n:"콜라 355ml", mg:34},
+  {n:"녹차",      mg:30},
+  {n:"직접 입력",  mg:null}
+];
+
+var drinks = [];
+
+/* ============ 유틸 ============ */
+function toMin(v){ var p=(v||"").split(":"); return (+p[0])*60 + (+p[1]); }
+function fmt(m){ m=((m%1440)+1440)%1440; var h=Math.floor(m/60),x=m%60;
+  return (h<10?"0":"")+h+":"+(x<10?"0":"")+x; }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+
+// 분 단위 시각의 가중치
+function weightAt(m){
+  m=((m%1440)+1440)%1440;
+  var core = (m>=CORE_START) || (m<CORE_END);
+  if(core) return 1;
+  if(m>=BUF_BEFORE && m<CORE_START) return 0.75;
+  if(m>=CORE_END && m<BUF_AFTER) return 0.75;
+  return 0.5;
+}
+
+// 타임라인상 위치(0~1)
+function pos(m){ return clamp((((m-TL_START)%1440+1440)%1440)/TL_LEN, 0, 1); }
+function posAbs(t){ return clamp(t/TL_LEN, 0, 1); }
+function toTl(m){ return (((m-TL_START)%1440)+1440)%1440; }
+
+/* ============ 계산 ============ */
+function compute(){
+  var bed = toMin(document.getElementById("bed").value);
+  var wake = toMin(document.getElementById("wake").value);
+  var dur = ((wake-bed)%1440+1440)%1440;      // 분
+  if(dur===0) dur = 0;
+
+  var eff = 0;
+  for(var i=0;i<dur;i++) eff += weightAt(bed+i)/60;
+  var hours = dur/60;
+
+  var base = 100 * Math.min(eff, TARGET_H) / TARGET_H;
+
+  var over = 0;
+  if(hours > OVER_START) over = Math.min((hours-OVER_START)*OVER_RATE, OVER_CAP);
+
+  var residual = 0;
+  drinks.forEach(function(d){
+    var gap = ((bed - d.t)%1440+1440)%1440 / 60;   // 섭취 → 취침 시간(h)
+    d.res = d.mg * Math.pow(0.5, gap/HALF_LIFE);
+    d.gap = gap;
+    residual += d.res;
+  });
+  var caf = Math.min(residual/CAF_DIV, CAF_CAP);
+
+  var total = clamp(base - over - caf, 0, 100);
+  return {bed:bed,wake:wake,dur:dur,hours:hours,eff:eff,
+          base:base,over:over,caf:caf,residual:residual,total:total};
+}
+
+/* ============ 렌더 ============ */
+function renderTimeline(r){
+  var pct = function(x){ return (x*100).toFixed(3)+"%"; };
+
+  var b1s=posAbs(toTl(BUF_BEFORE)), b1e=posAbs(toTl(CORE_START));
+  var cs=posAbs(toTl(CORE_START)),  ce=posAbs(toTl(CORE_START)+540);
+  var b2s=ce, b2e=posAbs(toTl(CORE_START)+540+60);
+
+  var z1=document.getElementById("zBuf1");
+  z1.style.left=pct(b1s); z1.style.width=pct(b1e-b1s);
+  var zc=document.getElementById("zCore");
+  zc.style.left=pct(cs); zc.style.width=pct(ce-cs);
+  var z2=document.getElementById("zBuf2");
+  z2.style.left=pct(b2s); z2.style.width=pct(b2e-b2s);
+  document.getElementById("zLabel").style.left=pct((cs+ce)/2);
+
+  var st=posAbs(toTl(r.bed)), en=posAbs(toTl(r.bed)+r.dur);
+  var bar=document.getElementById("sleepbar");
+  bar.style.left=pct(st); bar.style.width=pct(Math.max(en-st,0.004));
+
+  // 카페인 점
+  Array.prototype.slice.call(document.querySelectorAll(".dot")).forEach(function(e){e.remove();});
+  var track=document.getElementById("track");
+  drinks.forEach(function(d){
+    var el=document.createElement("div");
+    el.className="dot";
+    el.style.left=pct(posAbs(toTl(d.t)));
+    el.title=d.n+" "+fmt(d.t);
+    track.appendChild(el);
+  });
+
+  // 눈금
+  var ticks=document.getElementById("ticks");
+  if(!ticks.dataset.done){
+    var marks=[[0,"오전 6시"],[360,"낮 12시"],[720,"오후 6시"],[1080,"자정"],[1440,"오전 6시"],[1800,"낮 12시"]];
+    marks.forEach(function(m,i){
+      var t=document.createElement("div");
+      t.className="tick"+(i===0?" edge-l":(i===marks.length-1?" edge-r":""));
+      t.style.left=pct(m[0]/TL_LEN); t.textContent=m[1];
+      ticks.appendChild(t);
+    });
+    ticks.dataset.done="1";
+  }
+}
+
+function renderDrinks(){
+  var ul=document.getElementById("drinks");
+  ul.innerHTML="";
+  document.getElementById("drinksEmpty").style.display = drinks.length?"none":"block";
+  drinks.forEach(function(d,i){
+    var li=document.createElement("li");
+    li.innerHTML =
+      '<span class="dname">'+d.n+'</span>'+
+      '<span class="dmg">'+fmt(d.t)+' · '+Math.round(d.mg)+'mg</span>'+
+      '<span class="dres">잠들 때 '+Math.round(d.res||0)+'mg</span>';
+    var b=document.createElement("button");
+    b.className="del"; b.type="button"; b.textContent="✕";
+    b.setAttribute("aria-label", d.n+" 삭제");
+    b.onclick=function(){ drinks.splice(i,1); update(); };
+    li.appendChild(b);
+    ul.appendChild(li);
+  });
+}
+
+function bar(k, val, max, color, txt){
+  return '<div class="bd"><span class="k">'+k+'</span>'+
+    '<span class="meter"><span class="fill" style="width:'+
+    clamp(Math.abs(val)/max*100,0,100).toFixed(1)+'%;background:'+color+'"></span></span>'+
+    '<span class="v'+(val<0?' minus':'')+'">'+txt+'</span></div>';
+}
+
+function renderScore(r){
+  document.getElementById("score").textContent = Math.round(r.total);
+  document.getElementById("dur").textContent =
+    Math.floor(r.hours)+"시간 "+Math.round(r.dur%60)+"분 · 유효 "+r.eff.toFixed(1)+"시간";
+
+  var v = r.total>=85?"충분합니다":r.total>=70?"나쁘지 않습니다":r.total>=50?"부족합니다":"많이 부족합니다";
+  document.getElementById("verdict").textContent = v;
+
+  var h="";
+  h += bar("수면", r.base, 100, "var(--sleep)", "+"+Math.round(r.base));
+  if(r.over>0) h += bar("과다수면", -r.over, 100, "var(--bad)", "−"+Math.round(r.over));
+  h += bar("카페인", -r.caf, 100, "var(--caffeine)", "−"+Math.round(r.caf));
+  document.getElementById("bars").innerHTML=h;
+
+  // 가장 큰 손실 하나만 짚어준다
+  var lostSleep = 100-r.base, msg;
+  if(r.hours===0){
+    msg="잠든 시각과 일어난 시각을 입력하면 점수가 나옵니다.";
+  } else if(r.caf>=Math.max(lostSleep,r.over) && r.caf>3){
+    var late = drinks.slice().sort(function(a,b){return b.res-a.res;})[0];
+    msg="<strong>카페인이 가장 큰 감점 요인입니다.</strong> 잠들 무렵 몸에 "+Math.round(r.residual)+
+        "mg이 남아 있었습니다"+(late?" (대부분 "+fmt(late.t)+" 마신 "+late.n+")":"")+
+        ". 같은 양이라도 "+fmt(((r.bed-8*60)%1440+1440)%1440)+" 이전에 마시면 감점이 크게 줄어듭니다.";
+  } else if(r.over>=Math.max(lostSleep,r.caf) && r.over>0){
+    msg="<strong>너무 오래 잤습니다.</strong> "+r.hours.toFixed(1)+"시간은 오히려 나른함을 남깁니다. 8~9시간에 맞춰 보세요.";
+  } else if(lostSleep>5){
+    var outside = r.hours - r.eff > 0.05;
+    if(outside && r.eff < TARGET_H*0.95 && r.hours >= TARGET_H*0.9){
+      msg="<strong>시간은 충분한데 시간대가 어긋났습니다.</strong> "+
+          r.hours.toFixed(1)+"시간을 잤지만 최적 구간 밖의 잠은 절반만 쳐서 유효 "+r.eff.toFixed(1)+
+          "시간입니다. 취침을 밤 10시 쪽으로 당기면 같은 시간에 더 높은 점수가 나옵니다.";
+    } else {
+      msg="<strong>절대적인 수면시간이 모자랍니다.</strong> 만점까지 유효 수면 "+
+          (TARGET_H-r.eff).toFixed(1)+"시간이 더 필요합니다. 기상 시각을 미루기보다 취침을 당기는 쪽이 점수에 유리합니다.";
+    }
+  } else {
+    msg="<strong>좋은 밤이었습니다.</strong> 이 패턴을 며칠 유지하면 규칙성 점수도 같이 올라갑니다.";
+  }
+  document.getElementById("tip").innerHTML=msg;
+}
+
+/* ============ 기록 & 규칙성 ============ */
+var KEY="sleepscore.log.v1";
+function loadLog(){
+  try{ return JSON.parse(localStorage.getItem(KEY)||"[]"); }catch(e){ return []; }
+}
+function saveLog(a){
+  try{ localStorage.setItem(KEY, JSON.stringify(a)); return true; }catch(e){ return false; }
+}
+
+function renderReg(){
+  var log=loadLog(), el=document.getElementById("reg");
+  if(log.length<3){
+    el.innerHTML='<span style="color:var(--ink-faint)">기록 '+log.length+
+      '일치. 3일 이상 모이면 규칙성을 계산합니다.</span>';
+    return;
+  }
+  var recent=log.slice(-7);
+  // 취침 중간시각을 오후 6시 기준 분으로 환산
+  var mids=recent.map(function(r){
+    return (((r.bed + r.dur/2) - 1080)%1440+1440)%1440;
+  });
+  var mean=mids.reduce(function(a,b){return a+b;},0)/mids.length;
+  var sd=Math.sqrt(mids.reduce(function(a,b){return a+(b-mean)*(b-mean);},0)/mids.length);
+  var regScore=clamp(Math.round(100-sd*0.8),0,100);
+  var word = sd<20?"매우 일정합니다":sd<40?"대체로 일정합니다":sd<70?"들쭉날쭉합니다":"많이 불규칙합니다";
+
+  var maxS=Math.max.apply(null,recent.map(function(r){return r.score;}));
+  var spark='<div class="spark">'+recent.map(function(r){
+    return '<div style="height:'+Math.max(3,r.score/100*38)+'px" title="'+r.date+' · '+r.score+'점"></div>';
+  }).join("")+'</div>';
+
+  el.innerHTML='최근 '+recent.length+'일 취침 시각의 흔들림은 평균 <span class="big">±'+
+    Math.round(sd)+'분</span>, 규칙성 <span class="big">'+regScore+'점</span>입니다. '+word+'.'+spark;
+}
+
+function renderLogTable(){
+  var log=loadLog().slice().reverse(); // 최신순
+  var box=document.getElementById("logtable");
+  if(log.length===0){
+    box.innerHTML='<div class="logempty">아직 저장된 기록이 없습니다. "오늘 기록 저장"을 눌러 추가하세요.</div>';
+    return;
+  }
+  var rows=log.map(function(r,i){
+    var bedH=fmt(r.bed), h=Math.floor(r.dur/60), m=r.dur%60;
+    return '<tr><td>'+r.date+'</td><td>'+bedH+'</td><td class="num">'+h+'시간 '+m+'분</td>'+
+      '<td class="num">'+r.score+'점</td>'+
+      '<td><button class="rowdel" type="button" data-date="'+r.date+'" aria-label="'+r.date+' 기록 삭제">✕</button></td></tr>';
+  }).join("");
+  box.innerHTML =
+    '<table><thead><tr><th>날짜</th><th>취침</th><th>수면시간</th><th>총점</th><th></th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table>';
+  Array.prototype.slice.call(box.querySelectorAll(".rowdel")).forEach(function(b){
+    b.onclick=function(){
+      var d=b.getAttribute("data-date");
+      var log2=loadLog().filter(function(x){return x.date!==d;});
+      saveLog(log2);
+      renderReg();
+      renderLogTable();
+    };
+  });
+}
+
+var toggleLogBtn=document.getElementById("toggleLog");
+var logtableBox=document.getElementById("logtable");
+var logOpen=false;
+toggleLogBtn.onclick=function(){
+  logOpen=!logOpen;
+  logtableBox.classList.toggle("open",logOpen);
+  toggleLogBtn.textContent = logOpen ? "저장된 기록 접기" : "저장된 기록 전체 보기";
+  if(logOpen) renderLogTable();
+};
+
+/* ============ 이벤트 ============ */
+function update(){
+  var r=compute();
+  renderTimeline(r);
+  renderDrinks();
+  renderScore(r);
+  window.__last=r;
+}
+
+document.getElementById("bed").addEventListener("input",update);
+document.getElementById("wake").addEventListener("input",update);
+
+var pbox=document.getElementById("presets");
+var addrow=document.getElementById("addrow");
+var addName=document.getElementById("addName");
+var addMg=document.getElementById("addMg");
+var addTime=document.getElementById("addTime");
+var chipEls=[];
+var activeCustom=false;
+
+function nowHM(){ var d=new Date(); return d.getHours()*60+d.getMinutes(); }
+
+function openAddRow(p, chipEl){
+  chipEls.forEach(function(c){c.classList.remove("active");});
+  chipEl.classList.add("active");
+  activeCustom = (p.mg===null);
+  addName.value = p.mg===null ? "직접 입력" : p.n;
+  addMg.value = p.mg===null ? "" : p.mg;
+  addMg.readOnly = !activeCustom ? true : false;
+  addTime.value = fmt(nowHM());
+  addrow.classList.add("open");
+  (activeCustom ? addMg : addTime).focus();
+}
+
+PRESETS.forEach(function(p){
+  var b=document.createElement("button");
+  b.className="chip"; b.type="button";
+  b.innerHTML = p.mg===null ? p.n : p.n+'<small>'+p.mg+'mg</small>';
+  b.onclick=function(){ openAddRow(p, b); };
+  chipEls.push(b);
+  pbox.appendChild(b);
+});
+
+document.getElementById("addCancel").onclick=function(){
+  addrow.classList.remove("open");
+  chipEls.forEach(function(c){c.classList.remove("active");});
+};
+
+document.getElementById("addConfirm").onclick=function(){
+  var mg=parseFloat(addMg.value);
+  var tv=addTime.value;
+  if(!isFinite(mg)||mg<=0){ addMg.focus(); return; }
+  if(!tv){ addTime.focus(); return; }
+  drinks.push({n: addName.value + (activeCustom ? " "+Math.round(mg)+"mg" : ""), mg:mg, t:toMin(tv)});
+  addrow.classList.remove("open");
+  chipEls.forEach(function(c){c.classList.remove("active");});
+  update();
+  var cb=document.getElementById("confirmband");
+  cb.classList.add("show");
+  setTimeout(function(){ cb.classList.remove("show"); }, 1800);
+};
+
+var savedMsgEl=document.getElementById("savedMsg");
+function flashMsg(text, ok){
+  savedMsgEl.textContent = text;
+  savedMsgEl.style.color = ok ? "var(--good)" : "var(--bad)";
+  setTimeout(function(){ savedMsgEl.textContent=""; }, 2600);
+}
+
+document.getElementById("save").onclick=function(){
+  var r=window.__last;
+  if(!r||r.dur===0){ flashMsg("먼저 수면 시각을 입력하세요", false); return; }
+  var log=loadLog();
+  var today=new Date().toISOString().slice(0,10);
+  log=log.filter(function(x){return x.date!==today;});
+  log.push({date:today, bed:r.bed, dur:r.dur, score:Math.round(r.total)});
+  if(log.length>30) log=log.slice(-30);
+  var ok=saveLog(log);
+  flashMsg(ok ? "저장했습니다" : "이 브라우저에는 저장할 수 없습니다", ok);
+  renderReg();
+  if(logOpen) renderLogTable();
+};
+
+var clearBtn=document.getElementById("clear");
+var clearArmed=false;
+clearBtn.onclick=function(){
+  if(!clearArmed){
+    clearArmed=true;
+    clearBtn.textContent="정말 지울까요? 다시 누르세요";
+    setTimeout(function(){ clearArmed=false; clearBtn.textContent="전체 지우기"; }, 3000);
+    return;
+  }
+  clearArmed=false;
+  clearBtn.textContent="전체 지우기";
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  flashMsg("기록을 지웠습니다", true);
+  renderReg();
+  if(logOpen) renderLogTable();
+};
+
+update();
+renderReg();
+})();
+</script>
+</body>
+</html>
